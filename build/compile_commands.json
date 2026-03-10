@@ -1,0 +1,17 @@
+[
+{
+  "directory": "/home/jianghu/C++/my_project/build",
+  "command": "/usr/bin/g++ -I/home/jianghu/C++/my_project/include -g -std=c++17 -o CMakeFiles/device_controller.dir/src/DeviceController.cpp.o -c /home/jianghu/C++/my_project/src/DeviceController.cpp",
+  "file": "/home/jianghu/C++/my_project/src/DeviceController.cpp"
+},
+{
+  "directory": "/home/jianghu/C++/my_project/build",
+  "command": "/usr/bin/g++ -I/home/jianghu/C++/my_project/include -g -std=c++17 -o CMakeFiles/controller_app.dir/src/main.cpp.o -c /home/jianghu/C++/my_project/src/main.cpp",
+  "file": "/home/jianghu/C++/my_project/src/main.cpp"
+},
+{
+  "directory": "/home/jianghu/C++/my_project/build",
+  "command": "/usr/bin/g++ -I/home/jianghu/C++/my_project/include -g -std=c++17 -o CMakeFiles/device_controller_tests.dir/tests/test_device_controller.cpp.o -c /home/jianghu/C++/my_project/tests/test_device_controller.cpp",
+  "file": "/home/jianghu/C++/my_project/tests/test_device_controller.cpp"
+}
+]

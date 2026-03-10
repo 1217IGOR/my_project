@@ -1,0 +1,6 @@
+/home/jianghu/C++/my_project/build/CMakeFiles/device_controller.dir
+/home/jianghu/C++/my_project/build/CMakeFiles/controller_app.dir
+/home/jianghu/C++/my_project/build/CMakeFiles/device_controller_tests.dir
+/home/jianghu/C++/my_project/build/CMakeFiles/test.dir
+/home/jianghu/C++/my_project/build/CMakeFiles/edit_cache.dir
+/home/jianghu/C++/my_project/build/CMakeFiles/rebuild_cache.dir
