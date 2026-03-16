@@ -12,6 +12,7 @@ set(PROJECT_TEST_DIR ${CMAKE_CURRENT_SOURCE_DIR}/tests)
 
 add_library(device_controller
     ${PROJECT_SOURCE_DIR}/DeviceController.cpp
+    ${PROJECT_SOURCE_DIR}/MockMotor.cpp
 )
 
 target_include_directories(device_controller
