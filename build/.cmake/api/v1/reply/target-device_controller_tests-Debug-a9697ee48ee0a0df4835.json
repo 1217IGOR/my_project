@@ -2,7 +2,7 @@
 	"artifacts" : 
 	[
 		{
-			"path" : "controller_app"
+			"path" : "device_controller_tests"
 		}
 	],
 	"backtrace" : 1,
@@ -25,13 +25,13 @@
 			{
 				"command" : 0,
 				"file" : 0,
-				"line" : 23,
+				"line" : 31,
 				"parent" : 0
 			},
 			{
 				"command" : 1,
 				"file" : 0,
-				"line" : 27,
+				"line" : 35,
 				"parent" : 0
 			}
 		]
@@ -77,7 +77,7 @@
 			"id" : "device_controller::@6890427a1f51a3e7e1df"
 		}
 	],
-	"id" : "controller_app::@6890427a1f51a3e7e1df",
+	"id" : "device_controller_tests::@6890427a1f51a3e7e1df",
 	"link" : 
 	{
 		"commandFragments" : 
@@ -98,8 +98,8 @@
 		],
 		"language" : "CXX"
 	},
-	"name" : "controller_app",
-	"nameOnDisk" : "controller_app",
+	"name" : "device_controller_tests",
+	"nameOnDisk" : "device_controller_tests",
 	"paths" : 
 	{
 		"build" : ".",
@@ -120,7 +120,7 @@
 		{
 			"backtrace" : 1,
 			"compileGroupIndex" : 0,
-			"path" : "src/main.cpp",
+			"path" : "tests/test_device_controller.cpp",
 			"sourceGroupIndex" : 0
 		}
 	],

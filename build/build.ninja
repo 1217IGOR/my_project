@@ -63,6 +63,13 @@ build CMakeFiles/device_controller.dir/src/MockMotor.cpp.o: CXX_COMPILER__device
   OBJECT_DIR = CMakeFiles/device_controller.dir
   OBJECT_FILE_DIR = CMakeFiles/device_controller.dir/src
 
+build CMakeFiles/device_controller.dir/src/EquipmentController.cpp.o: CXX_COMPILER__device_controller_Debug /home/jianghu/C++/my_project/src/EquipmentController.cpp || cmake_object_order_depends_target_device_controller
+  DEP_FILE = CMakeFiles/device_controller.dir/src/EquipmentController.cpp.o.d
+  FLAGS = -g -std=c++17
+  INCLUDES = -I/home/jianghu/C++/my_project/include
+  OBJECT_DIR = CMakeFiles/device_controller.dir
+  OBJECT_FILE_DIR = CMakeFiles/device_controller.dir/src
+
 
 # =============================================================================
 # Link build statements for STATIC_LIBRARY target device_controller
@@ -71,7 +78,7 @@ build CMakeFiles/device_controller.dir/src/MockMotor.cpp.o: CXX_COMPILER__device
 #############################################
 # Link the static library libdevice_controller.a
 
-build libdevice_controller.a: CXX_STATIC_LIBRARY_LINKER__device_controller_Debug CMakeFiles/device_controller.dir/src/DeviceController.cpp.o CMakeFiles/device_controller.dir/src/MockMotor.cpp.o
+build libdevice_controller.a: CXX_STATIC_LIBRARY_LINKER__device_controller_Debug CMakeFiles/device_controller.dir/src/DeviceController.cpp.o CMakeFiles/device_controller.dir/src/MockMotor.cpp.o CMakeFiles/device_controller.dir/src/EquipmentController.cpp.o
   LANGUAGE_COMPILE_FLAGS = -g
   OBJECT_DIR = CMakeFiles/device_controller.dir
   POST_BUILD = :

@@ -11,6 +11,11 @@
 },
 {
   "directory": "/home/jianghu/C++/my_project/build",
+  "command": "/usr/bin/g++ -I/home/jianghu/C++/my_project/include -g -std=c++17 -o CMakeFiles/device_controller.dir/src/EquipmentController.cpp.o -c /home/jianghu/C++/my_project/src/EquipmentController.cpp",
+  "file": "/home/jianghu/C++/my_project/src/EquipmentController.cpp"
+},
+{
+  "directory": "/home/jianghu/C++/my_project/build",
   "command": "/usr/bin/g++ -I/home/jianghu/C++/my_project/include -g -std=c++17 -o CMakeFiles/controller_app.dir/src/main.cpp.o -c /home/jianghu/C++/my_project/src/main.cpp",
   "file": "/home/jianghu/C++/my_project/src/main.cpp"
 },
