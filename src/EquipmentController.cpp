@@ -89,16 +89,15 @@ std::string EquipmentController::getStateString() const {
     }
 }
 
-void EquipmentController::workerLoop() {
+void EquipmentController::workerLoop() {//核心后台线程函数，负责执行工艺流程的具体步骤，并且在每个步骤之间检查是否有停止命令，以实现可打断的流程控制。
     while (m_running) {
         // 等待任务开始
         std::unique_lock<std::mutex> lock(m_cv_mutex);
         
-        // wait 接受一个谓词：如果在 Running 且 process_active 为 true，或者线程被叫停(running=false)，就醒来。
-        // 防止虚假唤醒。
+        // 谓词防止虚假唤醒。
         m_cv.wait(lock, [this] {
             return !m_running || m_process_active; 
-        });
+        });//条件变量的使用，wait()函数接受一个锁和一个谓词作为参数，线程会在这个条件变量上等待，直到被唤醒并且满足谓词条件才会继续执行。这里的谓词检查了两个条件：如果m_running为false（表示线程应该停止），或者m_process_active为true（表示有工艺流程需要执行），线程就会被唤醒并继续执行后续的工艺流程步骤。
 
         if (!m_running) break; // 析构退出
 
@@ -122,7 +121,8 @@ void EquipmentController::workerLoop() {
         // 如果 timeout (2s) 到了，返回 false (timeout)，继续流程。
         // 如果 m_process_active 变成 false (被 stopProcess 叫停)，返回 true。
         bool stopped = m_cv.wait_for(lock, std::chrono::seconds(2), [this] {
-            return !m_process_active; 
+            return !m_process_active; //第二个参数的含义是超时时间，即使没有信号打断，在该时间也会自动醒来，也就是模拟工艺正常运行时间
+            //当超时并且过程中没有被打断说明工艺正常运行结束，如果在超时之前被打断了，那么说明工艺被叫停了，返回true，进入打断流程
         });
 
         if (stopped) {

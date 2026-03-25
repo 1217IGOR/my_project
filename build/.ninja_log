@@ -1,0 +1,5 @@
+# ninja log v5
+6	1935	1774422480064972672	CMakeFiles/device_controller.dir/src/DeviceController.cpp.o	8974cbd8056ceaca
+38	2179	1774422480312972200	CMakeFiles/device_controller_tests.dir/tests/test_device_controller.cpp.o	346532bb512a8f63
+28	3148	1774422481283970350	CMakeFiles/controller_app.dir/src/main.cpp.o	1bf7f57caf6cf170
+21	3371	1774422481504969928	CMakeFiles/device_controller.dir/src/EquipmentController.cpp.o	1ac0da54b0c3c1ef

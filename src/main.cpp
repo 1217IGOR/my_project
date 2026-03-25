@@ -12,24 +12,27 @@
 int main() {
     // 1. 创建共享的电机资源
     auto motor = std::make_shared<MockMotor>();
+    // std::make_shared是一个工厂函数，用于创建一个对象并返回一个指向该对象的std::shared_ptr智能指针。它的好处是能够避免手动使用new操作符，减少内存泄漏的风险，并且在创建对象时提供了更好的异常安全性。
     
     // 2. 创建高级控制器，注入依赖
+    // 在真实的半导体厂里，机台启动时会先读取一个 XML 配置文件，发现这台机器挂载了 3 个电机、2 个阀门。程序会先在内存里把这些底层的 shared_ptr<Hardware> 挨个实例化，然后再统统“注入（传参）”给 Controller。这就实现了硬件配置与控制逻辑的完美解耦。
     EquipmentController equipment(motor);
 
     equipment.initialize();
 
     // 场景 1: 正常完整流程
     std::cout << "\n--- Scenario 1: Normal Run ---\n";
-    if (equipment.startProcess()) {
+    if (equipment.startProcess()) {//这里是瞬间返回因为在startProcess中只是修改了标志位并notify_all了后台线程，真正的工艺流程是在后台线程中执行的，所以主线程可以继续往下走，等待足够长的时间让后台跑完。
         // 主线程等待足够长的时间让后台跑完
-        std::this_thread::sleep_for(std::chrono::seconds(4));
+        std::this_thread::sleep_for(std::chrono::seconds(4));//这里的sleep_for是为了让主线程等待足够长的时间，让后台线程能够完成整个工艺流程的模拟运行，确保我们能够看到完整的流程输出。
+        //通常在实际应用场景中这一步的意义是在UI界面保证用户能够看到完整的流程输出。
     }
 
     // 场景 2: 启动后中途打断
     std::cout << "\n--- Scenario 2: Start and Interrupt ---\n";
     if (equipment.startProcess()) {
         // 让它跑 1 秒（进入 Step 2 Processing 阶段）
-        std::this_thread::sleep_for(std::chrono::seconds(1));
+        std::this_thread::sleep_for(std::chrono::seconds(1));//因为后台线程中设定的是2s的超时时间，这里刚好模拟中途打断
         std::cout << "[Main] USER PRESSED STOP!\n";
         equipment.stopProcess();
     }
