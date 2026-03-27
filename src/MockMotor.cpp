@@ -6,6 +6,7 @@
 #include <chrono>
 
 MockMotor::MockMotor(){
+    m_motion_state = MotionState::Unintialized;
     // 启动运动模拟线程
     m_running = true;//应该运行
     m_is_moving = false;//初始不应该在运行
@@ -20,6 +21,8 @@ MockMotor::~MockMotor(){
         m_is_moving = true;//防御性编程，让线程如果本身也没有在运动，也能及时醒来检查到m_running被设置为false了，赶紧退出循环
         //这一步的意义主要在于能够确保不论wait的判断逻辑是基于m_running还是m_is_moving，线程都能够及时地被唤醒
         //并在唤醒后优先检查到m_running被设置为false了，从而正确地退出循环和结束线程，避免了潜在的线程泄漏和资源浪费问题。
+        m_motion_state = MotionState::Unintialized;//状态机回到初始状态，确保对象销毁前处于一个干净的状态，避免潜在的资源泄漏和未定义行为。
+        m_stop_requested = true;//??????告诉线程如果它正在运动的话，赶紧停下来，不要继续运动了，这样能够更快地让线程结束，避免不必要的资源占用和潜在的安全问题。
     }
     m_cv.notify_one();//唤醒线程让它检查m_running标志位，及时退出循环
 
@@ -30,23 +33,35 @@ MockMotor::~MockMotor(){
 
 void MockMotor::initialize() {
     std::cout << "[MockMotor] Initializing...\n";
+    std::lock_guard<std::mutex> lock(m_mutex);
     m_initialized = true;
+    m_motion_state = MotionState::Idle;//状态机进入准备就绪状态，表示电机已经初始化完成，准备好接受运动命令了。
+    m_stop_requested = false;//每次初始化都重置这个标志位，确保上一次的打断请求不会影响到新的运动命令。
+    m_active_command_id = 0;//重置当前活动命令ID，确保状态的一致性和正确性。
+    m_last_finished_command_id = 0;//重置最近一次完成的命令ID
+    m_is_moving = false;//确保初始化完成后电机处于静止状态
 }
 
-void MockMotor::moveToPosition(double position_mm) {
+CommandID MockMotor::moveToPosition(double position_mm) {
+    std::lock_guard<std::mutex> lock(m_mutex);
+
     if (!m_initialized) {
         std::cerr << "[MockMotor] Error: Motor not initialized!\n";
-        return;
+        return 0; //返回0表示命令无效，因为0是初始值，表示没有命令被激活;
     }
 
-    {
-        std::lock_guard<std::mutex> lock(m_mutex);
-        m_target_position = position_mm;
-        m_is_moving = true;
-    }
+    CommandID cmd = m_next_command_id++;//生成一个新的命令ID，确保每个命令都有一个唯一的ID，方便追踪和关联具体的运动命令。
+
+    m_target_position = position_mm;
+    m_active_command_id = cmd;//更新当前活动命令ID为新生成的命令ID，表示这个命令现在正在被执行。
+    m_stop_requested = false;//每次接到新的运动命令都重置这个标志位，确保上一次的打断请求不会影响到新的运动命令。
+    m_is_moving = true;//告诉运动线程现在应该在运动了
+
+    m_motion_state = MotionState::Moving;//状态机进入正在移动状态，表示电机正在执行运动命令。
+    
     m_cv.notify_one(); //通知运动线程有新的目标位置
-
     std::cout << "[MockMotor] Command received to move to " << position_mm << " mm.\n";
+    return cmd;//返回新生成的命令ID，调用者可以通过这个ID来追踪和关联具体的运动命令，方便日志记录、状态监控和故障诊断等功能。
 }
 
 /*void MockMotor::moveToPosition(double position_mm) {
@@ -77,13 +92,15 @@ void MockMotor::moveToPosition(double position_mm) {
 }在当前的简单阻塞版本中，moveToPosition函数通过sleep_for来模拟电机运动的时间，这会导致整个线程被阻塞，无法响应其他指令，比如stop指令。实际的非阻塞实现需要通过多线程或者异步机制来实现，确保在运动过程中仍然能够响应停止命令。*/
 
 void MockMotor::stop() {
-    {
-        std::lock_guard<std::mutex> lock(m_mutex);
-        m_is_moving = false;//告诉电机不要再运动了
-        //实际应用中可能还需要更新m_target_position为当前位置，或者设置一个特殊的停止标志位，让运动线程能够正确地处理停止命令，立即停止运动并保持当前位置不变。
+    std::lock_guard<std::mutex> lock(m_mutex);
+    m_stop_requested = true;//告诉运动线程有一个停止请求了，运动线程需要检查这个标志位来决定是否应该立即停止运动
+    if(m_active_command_id != 0){
+        m_last_finished_command_id = m_active_command_id;//更新最近一次完成的命令ID为当前活动的命令ID，表示这个命令被停止了，算是完成了
     }
-    m_cv.notify_one();//唤醒运动线程让它检查m_is_moving标志位，及时停止运动
-    std::cout << "[MockMotor] Stop command executed immediately.\n";
+    m_motion_state = MotionState::Stopped;//状态机进入停止状态，表示最近一次命令被stop中断了
+    m_cv.notify_one();//唤醒运动线程让它检查m_stop_requested标志位，及时停止运动
+    std::cout << "[MockMotor] Stop command executed.\n";
+    //?那下一次的CommandID应该如何生成呢？
 }
     
 /*void MockMotor::stop() {
@@ -115,7 +132,7 @@ void MockMotor::motionLoop(){
     while(m_running){
         std::unique_lock<std::mutex> lock(m_mutex);
 
-        //等待，如果没在动，也没有要推出，就挂起线程节约资源
+        //等待，如果没在动，也没有要退出，就挂起线程节约资源
         m_cv.wait(lock,[this]{
             return m_is_moving || !m_running;//如果正在运动或者不应该再运行了，就醒来检查
         });

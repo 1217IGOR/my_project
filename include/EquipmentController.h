@@ -66,6 +66,8 @@ private:
     std::atomic<bool> m_running{false}; // 标记线程是否应该继续运行（workerloop是否存活，只要控制器没被销毁就一直存活）
     std::atomic<bool> m_process_active{false}; // 标记当前是否正在跑Process（只有工艺流程被stopProcess叫停才会变成false，即使它变成false，workerloop线程也不会退出，因为它的生命由m_running控制）
     //分别设立原子变量来标记线程生命和业务生命
+    //新增原子变量 让workerLoop在运动等待期间可以立即响应stopProcess的调用的标志位 不复用m_process_active是因为它的语义是“工艺流程是否在跑”，如果复用当其为false时无法分辨是被请求中断结束还是自然结束，对日志、状态上报、错误处理等不友好
+    std::atomic<bool> m_stop_requested{false};
 
     // 同步原语：用于实现可打断的 sleep，当条件变量被唤醒时，能够检查该线程是否应该继续等待还是被叫停
     std::mutex m_cv_mutex;

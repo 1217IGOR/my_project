@@ -47,6 +47,7 @@ bool EquipmentController::startProcess() {
         
         {
             std::lock_guard<std::mutex> lock(m_cv_mutex);//在当前{}内作用，}结束后自动解锁
+            m_stop_requested = false;//每次启动流程都重置这个标志位，确保上一次的打断请求不会影响到新的流程运行
             //mutex是为了互斥，防止乱改数据，而后面的m_cv是为了同步，唤醒后台线程，是一个通信职责，是线程之间的信号灯
             m_process_active = true;
         }
@@ -58,7 +59,22 @@ bool EquipmentController::startProcess() {
     return false;
 }
 
-void EquipmentController::stopProcess() {
+void EquipmentController::stopProcess(){
+    //幂等性设计，重复调用stopProcess不会有副作用，保证了即使在工艺流程已经停止的情况下再次调用stopProcess也不会导致错误或异常。
+    {
+        std::lock_guard<std::mutex> lock(m_cv_mutex);
+        m_stop_requested = true;//设置打断请求标志位，告诉后台线程“嘿，用户叫停了，你赶紧停下来”，这个标志位的意义在于能够让后台线程在任何时候都能够检查到用户的打断请求，从而实现真正的可打断流程控制。
+        m_process_active = false;//无论当前流程是否在跑，都把这个标志位设置为false，确保流程状态的一致性和正确性，避免了流程状态的
+    }
+    if(m_motor) {
+        m_motor->stop();
+    }
+    m_cv.notify_all(); //唤醒后台线程让它检查m_stop_requested标志位，及时响应用户的打断请求，停止当前的工艺流程。
+    std::cout << "[EquipmentController] Stop requested.\n";
+
+}
+
+/*void EquipmentController::stopProcess() {
     if (m_state == EquipmentState::Running) {
         std::cout << "[EquipmentController] Stopping Process...\n";
         // 修改标志位
@@ -74,7 +90,7 @@ void EquipmentController::stopProcess() {
         }
         m_state = EquipmentState::Idle;
     }
-}
+}*/
 
 EquipmentState EquipmentController::getState() const {
     return m_state;
@@ -87,6 +103,13 @@ std::string EquipmentController::getStateString() const {
         case EquipmentState::Error: return "Error";
         default: return "Unknown";
     }
+}
+
+void EquipmentController::workerLoop(){//在修改了电机非阻塞运转后对应的设备控制器
+    constexpr double kTargetPosition = 100.0;
+    constexpr double kHomePos = 0.0;
+    constexpr double kPosEps = 0.1;//
+
 }
 
 void EquipmentController::workerLoop() {//核心后台线程函数，负责执行工艺流程的具体步骤，并且在每个步骤之间检查是否有停止命令，以实现可打断的流程控制。
