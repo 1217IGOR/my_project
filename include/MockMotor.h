@@ -34,7 +34,7 @@ private:
     std::atomic<CommandID> m_next_command_id{1};//命令ID生成器，初始值为1，每次调用moveToPosition时递增，确保每个命令都有一个唯一的ID，方便追踪和关联具体的运动命令。
     CommandID m_active_command_id{0};//当前正在执行的命令ID，初始值为0表示没有活动命令，当moveToPosition被调用时，这个ID会被更新为新的命令ID，stop命令可以通过这个ID来中断当前活动的命令。
     CommandID m_last_finished_command_id{0};//最近一次完成的命令ID，初始值为0，当一个运动命令完成时，这个ID会被更新为刚完成的命令ID，方便记录和查询历史命令状态。
-    MotionState m_motion_state{MotionState::Unintialized};//当前的运动状态，初始状态为未初始化，当initialize()被调用时状态会变为Idle，moveToPosition被调用时状态会变为Moving，命令完成后状态会变为Arrived，如果stop被调用中断命令，状态会变为Stopped，如果发生错误状态会变为Fault。
+    MotionState m_motion_state{MotionState::Uninitialized};//当前的运动状态，初始状态为未初始化，当initialize()被调用时状态会变为Idle，moveToPosition被调用时状态会变为Moving，命令完成后状态会变为Arrived，如果stop被调用中断命令，状态会变为Stopped，如果发生错误状态会变为Fault。
 
     //非阻塞式模拟控制电机需要的状态变量
     std::thread m_worker;

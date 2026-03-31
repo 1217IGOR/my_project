@@ -9,7 +9,7 @@ public:
     using CommandID = std::uint32_t;//定义一个类型别名CommandID，表示命令的唯一标识符，使用std::uint32_t确保了命令ID的大小和范围的一致性，便于跨平台开发和维护。
     
     enum class MotionState : std::uint8_t{
-        Unintialized = 0,
+        Uninitialized = 0,
         Idle,
         Moving,
         Arrived,//最近一次命令正常到位
@@ -18,9 +18,9 @@ public:
     };
 
     struct MotionSnapshot{//运动快照，包含当前位置信息和状态信息，供外部查询使用
-        CommandID activate_command_id{0};//激活这个运动快照的命令ID，外部可以通过这个ID来追踪和关联具体的运动命令，方便日志记录、状态监控和故障诊断等功能。
+        CommandID active_command_id{0};//激活这个运动快照的命令ID，外部可以通过这个ID来追踪和关联具体的运动命令，方便日志记录、状态监控和故障诊断等功能。
         CommandID last_finished_command_id{0};//最近一次完成的命令ID，用于记录和查询历史命令状态。
-        MotionState state{MotionState::Unintialized};//当前的运动状态，初始状态为未初始化。
+        MotionState state{MotionState::Uninitialized};//当前的运动状态，初始状态为未初始化。
         double current_position_mm{0.0};//当前的位置信息，单位为毫米，初始位置为0.0。
         double target_position_mm{0.0};//当前的目标位置信息，单位为毫米，初始目标位置为0.0。
         std::uint32_t states_code{0};//状态码，可以用来表示电机的各种状态，例如错误码、警告码等，初始值为0。

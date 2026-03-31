@@ -6,7 +6,7 @@
 #include <chrono>
 
 MockMotor::MockMotor(){
-    m_motion_state = MotionState::Unintialized;
+    m_motion_state = MotionState::Uninitialized;
     // 启动运动模拟线程
     m_running = true;//应该运行
     m_is_moving = false;//初始不应该在运行
@@ -21,8 +21,8 @@ MockMotor::~MockMotor(){
         m_is_moving = true;//防御性编程，让线程如果本身也没有在运动，也能及时醒来检查到m_running被设置为false了，赶紧退出循环
         //这一步的意义主要在于能够确保不论wait的判断逻辑是基于m_running还是m_is_moving，线程都能够及时地被唤醒
         //并在唤醒后优先检查到m_running被设置为false了，从而正确地退出循环和结束线程，避免了潜在的线程泄漏和资源浪费问题。
-        m_motion_state = MotionState::Unintialized;//状态机回到初始状态，确保对象销毁前处于一个干净的状态，避免潜在的资源泄漏和未定义行为。
-        m_stop_requested = true;//??????告诉线程如果它正在运动的话，赶紧停下来，不要继续运动了，这样能够更快地让线程结束，避免不必要的资源占用和潜在的安全问题。
+        m_motion_state = MotionState::Uninitialized;//状态机回到初始状态，确保对象销毁前处于一个干净的状态，避免潜在的资源泄漏和未定义行为。
+        m_stop_requested = true;//告诉线程如果它正在运动的话，赶紧停下来，不要继续运动了，这样能够更快地让线程结束，避免不必要的资源占用和潜在的安全问题。
     }
     m_cv.notify_one();//唤醒线程让它检查m_running标志位，及时退出循环
 
@@ -42,7 +42,7 @@ void MockMotor::initialize() {
     m_is_moving = false;//确保初始化完成后电机处于静止状态
 }
 
-CommandID MockMotor::moveToPosition(double position_mm) {
+IMotor::CommandID MockMotor::moveToPosition(double position_mm) {
     std::lock_guard<std::mutex> lock(m_mutex);
 
     if (!m_initialized) {
@@ -94,10 +94,11 @@ CommandID MockMotor::moveToPosition(double position_mm) {
 void MockMotor::stop() {
     std::lock_guard<std::mutex> lock(m_mutex);
     m_stop_requested = true;//告诉运动线程有一个停止请求了，运动线程需要检查这个标志位来决定是否应该立即停止运动
-    if(m_active_command_id != 0){
-        m_last_finished_command_id = m_active_command_id;//更新最近一次完成的命令ID为当前活动的命令ID，表示这个命令被停止了，算是完成了
-    }
-    m_motion_state = MotionState::Stopped;//状态机进入停止状态，表示最近一次命令被stop中断了
+    // if(m_active_command_id != 0){
+    //     m_last_finished_command_id = m_active_command_id;//更新最近一次完成的命令ID为当前活动的命令ID，表示这个命令被停止了，算是完成了
+    // }
+    // m_motion_state = MotionState::Stopped;//状态机进入停止状态，表示最近一次命令被stop中断了
+    //(这两步在loop中实现，避免状态撒谎)
     m_cv.notify_one();//唤醒运动线程让它检查m_stop_requested标志位，及时停止运动
     std::cout << "[MockMotor] Stop command executed.\n";
     //?那下一次的CommandID应该如何生成呢？
@@ -118,13 +119,48 @@ double MockMotor::currentPosition() const {
     return m_position;
 }
 
-std::uint32_t MockMotor::status() const {
-    if(!m_initialized) return 0; //未初始化
-    return m_is_moving ? 2 : 1; // 1表示准备就绪(空闲），2表示正在移动
+std::uint32_t MockMotor::status() const {//根据MotionState映射状态码
+    std::lock_guard<std::mutex> lock(m_mutex);
+    switch (m_motion_state)
+    {
+    case MotionState::Uninitialized: return 0;
+    case MotionState::Idle: return 1;
+    case MotionState::Moving: return 2;
+    case MotionState::Arrived: return 3;
+    case MotionState::Stopped: return 4;
+    case MotionState::Fault: return 5;
+    
+    default: return 5; //未知状态当成错误处理
+    }
+    // if(!m_initialized) return 0; //未初始化
+    // return m_is_moving ? 2 : 1; // 1表示准备就绪(空闲），2表示正在移动
+}
+
+IMotor::MotionSnapshot MockMotor::snapshot() const{
+    std::lock_guard<std::mutex> lock(m_mutex);
+    MotionSnapshot s{};
+    s.active_command_id = m_active_command_id;
+    s.last_finished_command_id = m_last_finished_command_id;
+    s.state = m_motion_state;
+    s.current_position_mm = m_position;
+    s.target_position_mm = m_target_position;
+    switch(m_motion_state)
+    {
+        case MotionState::Uninitialized: s.states_code = 0; break;
+        case MotionState::Idle: s.states_code = 1; break;
+        case MotionState::Moving: s.states_code = 2; break;
+        case MotionState::Arrived: s.states_code = 3; break;
+        case MotionState::Stopped: s.states_code = 4; break;
+        case MotionState::Fault: s.states_code = 5; break;
+        default: s.states_code = 5; break;//未知状态当成错误处理
+    }
+    return s;
 }
 
 bool MockMotor::isMoving() const {
-    return m_is_moving;
+    return m_is_moving.load();//原子变量的读取需要调用load()方法，确保读取到的是最新的值，避免了可能的竞态条件和数据不一致问题。
+    //实际上两种返回功能性是一样的，但是load可以提示人这里返回的是一个原子量，并且可以传入参数std::memory_order_relaxed使cpu在不锁住总线的情况下读取这个值，进一步提高性能，因为这个标志位只是一个简单的状态标志，并不涉及复杂的状态依赖关系，所以可以接受一定程度的内存顺序优化。
+    // return m_is_moving;
 }
 
 //一个独立线程中运行的死循环，用来模拟物理运动
@@ -138,7 +174,17 @@ void MockMotor::motionLoop(){
         });
         if(!m_running) break;//如果不应该再运行了，退出循环结束线程
 
-        if(!m_is_moving) continue;//如果不该在运动了，回到循环顶部继续等待
+        if(m_stop_requested){
+            m_is_moving = false;
+            m_motion_state = MotionState::Stopped;//状态机进入停止状态，表示最近一次命令被stop中断了
+            m_last_finished_command_id = m_active_command_id;//更新最近一次完成的命令ID为当前活动的命令ID，表示这个命令被停止了，算是完成了
+            m_active_command_id = 0;//重置当前活动命令ID，表示现在没有命令在执行了
+            m_stop_requested = false;//重置停止请求标志位，准备迎接下一次运动命令
+            std::cout << "[MockMotor] Movement stopped by request.\n";
+            continue;//回到循环顶部继续等待新的命令或者停止信号
+        }
+
+        // if(!m_is_moving) continue;//如果不该在运动了，回到循环顶部继续等待
 
         //模拟运动时间，按照距离和速度计算需要的时间
         double target = m_target_position;
@@ -147,6 +193,9 @@ void MockMotor::motionLoop(){
         if(std::abs(diff) < 1e-6){
             m_position = target;
             m_is_moving = false;
+            m_last_finished_command_id = m_active_command_id;//更新最近一次完成的命令ID为当前活动的命令ID，表示这个命令正常完成了
+            m_active_command_id = 0;//重置当前活动命令ID，表示现在没有命令在执行了
+            m_motion_state = MotionState::Arrived;//状态机进入到位状态，表示电机已经正常到达目标位置了
             std::cout << "[MockMotor] Reached target position: " << m_position << "\n";
             continue;
         }
@@ -155,7 +204,7 @@ void MockMotor::motionLoop(){
         double step = kSimulationSpeed * dt;//计算这一步走了多远
 
         if(std::abs(diff) < step){
-            step = diff;//如果剩余距离小于这一步的距离，就直接走到目标位置
+            step = std::abs(diff);//如果剩余距离小于这一步的距离，就直接走到目标位置
         }
 
         m_position += step * (diff > 0 ? 1 : -1);//按照方向更新位置
